@@ -128,3 +128,139 @@ def render_module31_ui(name, desc, cat_key):
     }
 
     TREATMENT-COMPARISON {
+        string ComparisonID PK
+        string PatientID FK
+        string CaseID FK
+        string MetricID FK
+        float SimilarityScore
+        float EffectivenessDelta
+    }
+
+    SIMILARITY-METRIC {
+        string MetricID PK
+        string Algorithm
+        float weight_lab
+        float weight_clinical
+        float wt_treatment
+    }
+        </div>
+        <script type="module">
+            import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+            mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+        </script>
+        """
+        components.html(mermaid_code, height=600, scrolling=True)
+
+    elif tab == "📋 Collections":
+        st.markdown("### Database Collections")
+        
+        try:
+            patients_count = db.patients.count_documents({})
+            hist_count = db.historical_cases.count_documents({})
+            sim_count = db.similarity_metrics.count_documents({})
+            treat_count = db.treatment_comparisons.count_documents({})
+            outcomes_count = db.outcomes.count_documents({})
+            
+            st.table({
+                "Collection Name": ["patients", "historical_cases", "similarity_metrics", "treatment_comparisons", "outcomes"],
+                "Records": [patients_count, hist_count, sim_count, treat_count, outcomes_count],
+                "Status": ["✅ Active"] * 5
+            })
+        except Exception as e:
+            st.error(f"Database Error: {e}. Please ensure MongoDB is running.")
+
+    elif tab == "🔍 View Logic":
+        st.markdown("### Pre-defined Processing Views & Queries")
+        st.markdown("In compliance with the constraints, here is how the core processing simulates SQL logic inside MongoDB via aggregations and Python.")
+        
+        st.markdown("**1. Data Normalization View (Simulation)**")
+        st.info("Normalizes raw vitals into a standardized 0-1 range for Euclidean comparison.")
+        st.code("""
+# MongoDB Aggregation Pipeline equivalent for View
+pipeline = [
+    {
+        "$project": {
+            "case_id": "$_id",
+            "norm_heart_rate": { "$divide": ["$lab_values.heart_rate", 200] }, # Example max bound
+            "norm_systolic_bp": { "$divide": ["$lab_values.systolic_bp", 250] },
+            "norm_hba1c": { "$divide": ["$lab_values.hba1c", 15] }
+        }
+    }
+]
+        """, language="python")
+
+        st.markdown("**2. Outcome Aggregation Query**")
+        st.info("Joins the top similar cases with their historical outcomes to predict recovery.")
+        st.code("""
+# Execute after ranking top cases
+db.treatment_comparisons.aggregate([
+    { "$match": { "target_patient_id": target_patient_id } },
+    { "$sort": { "SimilarityScore": -1 } },
+    { "$limit": 10 },
+    {
+        "$lookup": {
+            "from": "outcomes",
+            "localField": "matched_case_id",
+            "foreignField": "case_id",
+            "as": "outcome_details"
+        }
+    }
+])
+        """, language="python")
+        
+    elif tab == "⚡ DB Triggers (Simulation)":
+        st.markdown("### Database Triggers")
+        st.markdown("These represent events that automatically fire when records are modified.")
+        
+        st.code("""
+# Trigger: Update Treatment Effectiveness Delta
+# Fired When: A new match is calculated and inserted into treatment_comparisons
+
+def after_comparison_insert(target_id, matched_id):
+    # Retrieve outcomes
+    case_outcome = db.outcomes.find_one({"case_id": matched_id})
+    target_current_status = get_target_status(target_id)
+    
+    # Calculate delta
+    delta = case_outcome['recovery_time_days'] - target_current_status['days_ill']
+    
+    # Auto-update the comparison record
+    db.treatment_comparisons.update_one(
+        {"target_patient_id": target_id, "matched_case_id": matched_id},
+        {"$set": {"EffectivenessDelta": f"{delta} days estimated"}}
+    )
+        """, language="python")
+
+    elif tab == "📊 Output":
+        st.markdown("### 🎯 Patient Case Similarity Analysis")
+        
+        # Fetch patients dynamically for dropdown
+        try:
+            patients_cursor = list(db.patients.find({}, {"_id": 1, "name": 1}))
+            if not patients_cursor:
+                st.warning("No patients in the database. Please go to Home and run 'Populate Dummy Data'.")
+            else:
+                patient_options = {str(p["_id"]): f"{p.get('name', 'Unknown User')} (ID: {p['_id']})" for p in patients_cursor}
+                
+                selected_patient_id = st.selectbox("Select Target Patient:", 
+                                                   options=list(patient_options.keys()), 
+                                                   format_func=lambda x: patient_options[x])
+
+                if st.button("Run Similarity Search", type="primary"):
+                    with st.spinner("Crunching historical metrics (Euclidean & Jaccard logic)..."):
+                        try:
+                            results = calculate_similarity(selected_patient_id)
+                            if results:
+                                st.success("Analysis Complete! Top matches found:")
+                                st.table(results)
+                            else:
+                                st.warning(f"No matched records found for patient: {selected_patient_id}")
+                        except Exception as e:
+                            st.error(f"Error during execution: {e}")
+        except Exception as e:
+            st.error(f"Could not connect to database: {e}")
+
+    st.divider()
+    if st.button("⬅ Back to Modules"):
+        st.session_state.view = "category"
+        st.rerun()
