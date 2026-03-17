@@ -1,5 +1,5 @@
 import streamlit as st
-
+from db import users
 def signup_page():
     st.title("Create Account")
 
@@ -10,4 +10,4 @@ def signup_page():
 
     if st.button("Create Account"):
         st.session_state.page = "login"
-        st.experimental_rerun()
+        st.rerun()
