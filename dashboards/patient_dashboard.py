@@ -148,15 +148,19 @@ def patient_dashboard():
         "I - Integrated Capstone Projects"
     ])
 
+    st.session_state.setdefault("last_sidebar_selected", selected)
+
     # Handle sidebar selection
-    if selected != "Dashboard" and selected in CATEGORIES:
-        st.session_state.selected_category = selected
-        st.session_state.view = "category"
-        st.session_state.selected_module = None
-    elif selected == "Dashboard":
-        st.session_state.view = "main"
-        st.session_state.selected_category = None
-        st.session_state.selected_module = None
+    if selected != st.session_state.last_sidebar_selected:
+        st.session_state.last_sidebar_selected = selected
+        if selected != "Dashboard" and selected in CATEGORIES:
+            st.session_state.selected_category = selected
+            st.session_state.view = "category"
+            st.session_state.selected_module = None
+        elif selected == "Dashboard":
+            st.session_state.view = "main"
+            st.session_state.selected_category = None
+            st.session_state.selected_module = None
 
     # ROUTER
     if st.session_state.view == "category":
@@ -361,13 +365,22 @@ def show_module_detail():
     code, name, desc, tables, records = st.session_state.selected_module
     cat_key = st.session_state.selected_category
     
+    # Custom Router for Module 31 (F1)
+    if code in ["F1", "M31"]:
+        import sys
+        import os
+        sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+        from src.modules.module31.ui import render_module31_ui
+        render_module31_ui(name, desc, cat_key)
+        return
+    
     # Breadcrumb
     st.markdown(f"Category {cat_key.split('-')[0].strip()} > {name}")
     st.markdown(f"# {name}")
     st.markdown(f"*{desc}*")
     
     # Tabs
-    tab = st.radio("", ["🏠 Home", "🔗 ER Diagram", "📋 Tables", "🔍 SQL Query", "⚡ Triggers", "📊 Output"], horizontal=True)
+    tab = st.radio("Navigation", ["🏠 Home", "🔗 ER Diagram", "📋 Tables", "🔍 SQL Query", "⚡ Triggers", "📊 Output"], horizontal=True, label_visibility="collapsed")
     st.divider()
     
     if tab == "🏠 Home":
