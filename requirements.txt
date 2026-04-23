@@ -1,6 +1,8 @@
 streamlit
 streamlit-option-menu
 matplotlib
-pymongo
 numpy
-dotenv
+pymongo>=4.6
+dnspython>=2.4
+certifi
+python-dotenv

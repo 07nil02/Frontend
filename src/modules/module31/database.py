@@ -1,31 +1,36 @@
 from pymongo import MongoClient
-from dotenv import load_dotenv
 import os
 import streamlit as st
+import certifi
 
-# Load variables from .env for local development
-load_dotenv()
+# Only use dotenv locally
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 def get_db():
-    """
-    Connects to the MongoDB database using URI from st.secrets or .env
-    and returns the database object.
-    """
-    # Streamlit throws FileNotFoundError if secrets.toml isn't found locally
+    # Try Streamlit secrets first (Cloud)
     try:
         uri = st.secrets.get("MONGO_URI")
     except Exception:
         uri = None
-        
+
+    # Fallback to .env (local)
     if not uri:
         uri = os.getenv("MONGO_URI")
 
-    client = MongoClient(uri)
+    if not uri:
+        raise ValueError("MongoDB URI not found")
 
-    db = client["module31_db"]
+    client = MongoClient(
+        uri,
+        tls=True,
+        tlsCAFile=certifi.where()
+    )
 
-    return db
-
+    return client["module31_db"]
 
 if __name__ == '__main__':
     db = get_db()

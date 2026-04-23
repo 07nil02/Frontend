@@ -145,11 +145,14 @@ def render_module31_ui(name, desc, cat_key):
             treat_count = counts["treatment_comparisons"]
             outcomes_count = counts["outcomes"]
             
-            st.table({
+            import pandas as pd
+            df = pd.DataFrame({
                 "Collection Name": ["patients", "historical_cases", "similarity_metrics", "treatment_comparisons", "outcomes"],
                 "Records": [patients_count, hist_count, sim_count, treat_count, outcomes_count],
                 "Status": ["✅ Active"] * 5
             })
+            df.index = df.index + 1
+            st.table(df)
         except Exception as e:
             st.error(f"Database Error: {e}. Please ensure MongoDB is running.")
 
@@ -236,7 +239,10 @@ def after_comparison_insert(target_id, matched_id):
                             results = calculate_similarity(selected_patient_id)
                             if results:
                                 st.success("Analysis Complete! Top matches found:")
-                                st.table(results)
+                                import pandas as pd
+                                df = pd.DataFrame(results)
+                                df.index = df.index + 1
+                                st.table(df)
                             else:
                                 st.warning(f"No matched records found for patient: {selected_patient_id}")
                         except Exception as e:
