@@ -73,8 +73,8 @@ def calculate_similarity(target_patient_id):
     # Clear previous comparisons for the target patient
     treatment_comparisons.delete_many({"target_patient_id": target_patient_id})
     
-    # Insert new top matches
-    for result in sorted_results[:10]: # Insert top 10 matches
+    # Insert new matches
+    for result in sorted_results: # Insert all matches
         treatment_comparisons.insert_one({
             "target_patient_id": target_patient_id,
             "matched_case_id": result["case_id"],
@@ -83,8 +83,8 @@ def calculate_similarity(target_patient_id):
             "EffectivenessDelta": "calculation_pending" 
         })
         
-    print(f"Inserted {len(sorted_results[:10])} treatment comparisons for patient {target_patient_id}.")
-    return sorted_results
+    print(f"Inserted {len(sorted_results)} treatment comparisons for patient {target_patient_id}.")
+    return sorted_results[:10]
 
 if __name__ == '__main__':
     # This is an example of how you might run this.
